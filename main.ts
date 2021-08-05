@@ -10,7 +10,14 @@ registerRoutes(app)
 
 // page proxy route
 app.get('/*', async (req, reply) => {
-  const { __apiUrl, __debug } = req.query as any
+  let { __apiUrl, __debug } = req.query as any
+  if (__debug) {
+    // TODO: store to session
+    if (__debug === 'false') {
+      __debug = false
+    }
+  }
+
   const replaceUrl = __debug ?? onlineUrl
   const res = fetch(replaceUrl)
   const html = await res.then((r) => r.text())
