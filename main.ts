@@ -7,7 +7,7 @@ import path from 'path'
 import { URL } from 'url'
 import 'fastify-express'
 import 'fastify-secure-session'
-import { Readable } from 'stream'
+
 const app = fastify()
 app.register(require('fastify-secure-session'), {
   // the name of the session cookie, defaults to 'session'
@@ -27,22 +27,25 @@ registerRoutes(app)
 
 // page proxy route
 app.get('/*', async (req, reply) => {
-  let { __apiUrl, __debug = req.session.get('__debug') } = req.query as any
+  let {
+    __apiUrl = req.session.get('__apiUrl'),
+    __debug = req.session.get('__debug'),
+  } = req.query as any
   if (__debug) {
-    req.session.set('__debug', __debug)
-
-    if (__debug === 'false' || __debug === 'null') {
+    if (__debug === 'false' || __debug === 'null' || !isURL(__debug)) {
       __debug = undefined
       req.session.set('__debug', null)
+    } else {
+      req.session.set('__debug', __debug)
     }
   }
 
   if (__apiUrl) {
-    req.session.set('__apiUrl', __apiUrl)
-
-    if (__apiUrl === 'false' || __apiUrl === 'null') {
+    if (__apiUrl === 'false' || __apiUrl === 'null' || !isURL(__apiUrl)) {
       __apiUrl = undefined
       req.session.set('__apiUrl', null)
+    } else {
+      req.session.set('__apiUrl', __apiUrl)
     }
   }
 
@@ -55,24 +58,13 @@ app.get('/*', async (req, reply) => {
   const fullUrl = url.toString()
 
   const res = fetch(fullUrl)
+
   const blob = await (await res).clone().blob()
   const contentType =
     (await res).clone().headers.get('content-type') ?? blob.type
-  console.log(fullUrl + '  ' + contentType)
+
   if (!contentType.startsWith('text/html')) {
-    // TODO contentType compatible
-    if (contentType.startsWith('text') || contentType === 'application/javascript') {
-      reply.type(contentType).send(await (await res).text())
-      return
-    }
-    const buffer = await (await res).clone().buffer()
-    const stream = new Readable()
-
-    stream.push(buffer)
-    stream.push(null)
-
-    reply.type(contentType).send(stream)
-
+    reply.type(contentType).send((await res).body)
     return
   }
   const html = await res.then((r) => r.text())
@@ -112,7 +104,10 @@ app.get('/*', async (req, reply) => {
     }
     const $inject = dom.window.document.getElementById('PAGEPROXY_INJECT')
     if ($inject) {
-      $inject.innerHTML = `window.context = ${JSON.stringify(context)}`
+      $inject.innerHTML = `window.context = ${JSON.stringify(
+        context,
+      )}; window.inject = 'server';`
+      $inject.setAttribute('inject', 'true')
     }
 
     if (__debug) {
@@ -156,5 +151,19 @@ function parseRelativePath(path: string): Partial<URL> {
     hash: relative.hash,
     pathname: relative.pathname,
     search: relative.search,
+  }
+}
+
+function isURL(url: string) {
+  if (!url) {
+    return false
+  }
+  if (!url.startsWith('http')) {
+    return false
+  }
+  try {
+    return !!new URL(url)
+  } catch {
+    return false
   }
 }

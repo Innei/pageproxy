@@ -3,13 +3,13 @@ import logo from './logo.svg'
 import './App.css'
 import axios from 'axios'
 
-
+import ReactIcon from '../react.png'
 function App() {
   const [count, setCount] = useState(0)
   // const [message, setMessage] = useState('')
   const [payload, setPayload] = useState('')
   useEffect(() => {
-    axios.get(`${window.context.apiUrl}/master`).then(res => {
+    axios.get(`${window.context.apiUrl}/master`).then((res) => {
       setPayload(res.data)
     })
   }, [])
@@ -23,9 +23,8 @@ function App() {
             count is: {count}
           </button>
         </p>
-        <p>
-          payload:  {JSON.stringify(payload)}
-        </p>
+        <img src={ReactIcon} alt="react-icon" />
+        <p style={{ fontSize: '14px' }}>payload: {JSON.stringify(payload)}</p>
         <p>
           Edit <code>App.tsx</code> and save to test HMR updates.
         </p>
