@@ -7,4 +7,15 @@ export const registerRoutes = (app: FastifyInstance) => {
       username: 'innei',
     })
   })
+
+  // 简单鉴权
+  app.post('/api/login', async (req, reply) => {
+    req.session.set(
+      'user',
+      JSON.stringify({
+        username: 'innei',
+      }),
+    )
+    reply.send({ message: 'success' })
+  })
 }

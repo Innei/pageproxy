@@ -1,17 +1,10 @@
 # pageproxy
 
-render ssr, page proxy
-
+前端页面后端代理模式, 前端页面不在直接被客户端访问, 而是通过后端代理, 好处是可以在浏览器渲染之前就能获取到一些注入的数据. 也开始用线上的环境调本地的接口. 再或者是登陆鉴权不再需要前端访问后端接口鉴权再跳转, 而是直接第 0 跳就能到达登录页.
 
 ```
-      context
-server -> local web
-      |
-      -> online web
+pnpm run dev
+
 ```
 
----
-
-未解决的问题
-
-- 资源文件路径无法替换
+http://localhost:2323/?__apiUrl=false&__debug=http://localhost:3000

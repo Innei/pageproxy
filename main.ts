@@ -27,6 +27,7 @@ registerRoutes(app)
 
 // page proxy route
 app.get('/*', async (req, reply) => {
+  // TODO
   let {
     __apiUrl = req.session.get('__apiUrl'),
     __debug = req.session.get('__debug'),
@@ -49,6 +50,13 @@ app.get('/*', async (req, reply) => {
     }
   }
 
+  // TODO middleware
+  const user = req.session.get('user')
+  if (!user && !req.url.startsWith('/login')) {
+    reply.redirect('/login')
+    return
+  }
+
   const baseUrl = __debug ?? onlineUrl
   const url = new URL(baseUrl)
   const path = req.url
@@ -67,37 +75,42 @@ app.get('/*', async (req, reply) => {
     reply.type(contentType).send((await res).body)
     return
   }
-  const html = await res.then((r) => r.text())
+  const dom = await handleTag()
+  async function handleTag() {
+    const html = await res.then((r) => r.text())
 
-  const dom = new JSDOM(html)
-  const { window } = dom
+    const dom = new JSDOM(html)
+    const { window } = dom
 
-  const scripts = [...window.document.getElementsByTagName('script')]
+    const scripts = [...window.document.getElementsByTagName('script')]
 
-  scripts.map((script) => {
-    if (script.getAttribute('type') === 'module') {
-      const src = script.getAttribute('src')
+    scripts.map((script) => {
+      if (script.getAttribute('type') === 'module') {
+        const src = script.getAttribute('src')
 
-      if (src && src.startsWith('/')) {
-        // @ts-ignore
-        script.src = baseUrl + src
-        script.setAttribute('src', baseUrl + src)
+        if (src && src.startsWith('/')) {
+          // @ts-ignore
+          script.src = baseUrl + src
+          script.setAttribute('src', baseUrl + src)
+        }
       }
-    }
-    return script
-  })
+      return script
+    })
 
-  const links = [...window.document.getElementsByTagName('link')]
+    const links = [...window.document.getElementsByTagName('link')]
 
-  links.map((link) => {
-    const href = link.getAttribute('href')
-    if (href && href.startsWith('/')) {
-      // @ts-ignore
-      link.href = baseUrl + href
-      link.setAttribute('href', baseUrl + href)
-    }
-    return link
-  })
+    links.map((link) => {
+      const href = link.getAttribute('href')
+      if (href && href.startsWith('/')) {
+        // @ts-ignore
+        link.href = baseUrl + href
+        link.setAttribute('href', baseUrl + href)
+      }
+      return link
+    })
+    return dom
+  }
+
   function injectHeader() {
     const context = {
       apiUrl: __apiUrl ?? '/api',
@@ -106,7 +119,12 @@ app.get('/*', async (req, reply) => {
     if ($inject) {
       $inject.innerHTML = `window.context = ${JSON.stringify(
         context,
-      )}; window.inject = 'server';`
+      )}; window.inject = 'server'; window.env = {debug: ${
+        __debug ? `'${__debug}'` : 'false'
+      }}
+
+      window.user = ${user}
+      `
       $inject.setAttribute('inject', 'true')
     }
 
